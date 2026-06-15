@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>VeloLift – Đo vận tốc tập gym</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f4f0; min-height: 100vh; }
+
+  .app { max-width: 420px; margin: 0 auto; padding: 16px; }
+
+  .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-top: 8px; }
+  .logo { font-size: 22px; font-weight: 700; color: #1a1a1a; letter-spacing: -0.5px; }
+  .logo span { color: #7F77DD; }
+  .badge { display: flex; align-items: center; gap: 6px; background: #fff; border: 1px solid #e0ddf8; border-radius: 20px; padding: 5px 12px; font-size: 12px; font-weight: 500; color: #534AB7; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: #1D9E75; }
+  .dot.live { background: #E24B4A; animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  .section-label { font-size: 11px; font-weight: 600; color: #888; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 10px; }
+
+  .exercise-row { display: flex; gap: 8px; margin-bottom: 20px; }
+  .ex-btn { flex: 1; padding: 11px 4px; border: 1.5px solid #e0e0e0; border-radius: 12px; background: #fff; font-size: 13px; font-weight: 500; color: #666; cursor: pointer; transition: all 0.15s; }
+  .ex-btn.active { background: #EEEDFE; border-color: #7F77DD; color: #3C3489; }
+
+  .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .metric-card { background: #fff; border-radius: 14px; padding: 14px; border: 1px solid #efefef; }
+  .metric-label { font-size: 11px; color: #999; margin-bottom: 4px; }
+  .metric-value { font-size: 26px; font-weight: 700; color: #1a1a1a; line-height: 1; }
+  .metric-unit { font-size: 12px; color: #aaa; margin-top: 2px; }
+
+  .vel-card { background: #fff; border-radius: 14px; padding: 14px; margin-bottom: 14px; border: 1px solid #efefef; }
+  .vel-now { font-size: 13px; color: #999; margin-bottom: 10px; }
+  .vel-big { font-size: 42px; font-weight: 800; color: #1a1a1a; line-height: 1; margin-bottom: 10px; transition: color 0.3s; }
+  .vel-big .unit { font-size: 18px; font-weight: 400; color: #aaa; }
+  .vb-track { height: 12px; background: #f0f0f0; border-radius: 20px; overflow: hidden; margin-bottom: 8px; }
+  .vb-fill { height: 100%; border-radius: 20px; transition: width 0.2s, background 0.3s; background: #7F77DD; width: 0%; }
+  .vb-zones { display: flex; justify-content: space-between; font-size: 10px; color: #bbb; }
+  .zone-good { color: #1D9E75; font-weight: 600; }
+  .zone-warn { color: #BA7517; font-weight: 600; }
+
+  .rep-card { background: #fff; border-radius: 14px; padding: 14px; margin-bottom: 14px; border: 1px solid #efefef; }
+  .rep-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #f5f5f5; }
+  .rep-row:last-child { border-bottom: none; }
+  .rep-num { font-size: 13px; color: #aaa; min-width: 44px; }
+  .rep-bar-wrap { flex: 1; height: 7px; background: #f0f0f0; border-radius: 10px; overflow: hidden; }
+  .rep-bar { height: 100%; border-radius: 10px; }
+  .rep-vel { font-size: 14px; font-weight: 700; min-width: 42px; text-align: right; }
+  .empty-state { text-align: center; color: #bbb; font-size: 13px; padding: 12px 0; }
+
+  .status-card { background: #fff; border-radius: 14px; padding: 14px; margin-bottom: 20px; border: 1px solid #efefef; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .status-item .s-label { font-size: 11px; color: #999; margin-bottom: 4px; }
+  .status-item .s-value { font-size: 18px; font-weight: 700; color: #1a1a1a; }
+
+  .main-btn { width: 100%; padding: 18px; border-radius: 16px; border: none; font-size: 17px; font-weight: 700; cursor: pointer; transition: all 0.15s; margin-bottom: 12px; letter-spacing: -0.2px; }
+  .main-btn.idle { background: #7F77DD; color: #fff; }
+  .main-btn.idle:active { background: #534AB7; transform: scale(0.98); }
+  .main-btn.recording { background: #E24B4A; color: #fff; }
+  .main-btn.recording:active { background: #A32D2D; transform: scale(0.98); }
+
+  .tip { font-size: 12px; color: #aaa; text-align: center; line-height: 1.6; }
+  .tip strong { color: #7F77DD; }
+
+  .perm-banner { background: #fff8ed; border: 1px solid #FAC775; border-radius: 12px; padding: 12px 14px; margin-bottom: 16px; font-size: 13px; color: #854F0B; display: none; line-height: 1.5; }
+  .perm-banner b { display: block; margin-bottom: 4px; }
+
+  .ios-note { background: #EEEDFE; border-radius: 12px; padding: 12px 14px; margin-bottom: 16px; font-size: 12px; color: #3C3489; display: none; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div class="logo">Velo<span>Lift</span></div>
+    <div class="badge"><div class="dot" id="dot"></div><span id="statusText">Sẵn sàng</span></div>
+  </div>
+
+  <div id="iosNote" class="ios-note">
+    📱 <strong>Trên iPhone:</strong> Khi nhấn "Bắt đầu đo", trình duyệt sẽ hỏi cho phép truy cập cảm biến — chọn <b>Allow</b> để app hoạt động.
+  </div>
+
+  <div id="permBanner" class="perm-banner">
+    <b>⚠️ Không truy cập được cảm biến</b>
+    Thiết bị chạy chế độ mô phỏng. Trên iPhone: mở bằng Safari. Trên Android: mở bằng Chrome.
+  </div>
+
+  <div class="section-label">Bài tập</div>
+  <div class="exercise-row">
+    <button class="ex-btn active" onclick="setEx(this,'Squat')">Squat</button>
+    <button class="ex-btn" onclick="setEx(this,'Bench')">Bench</button>
+    <button class="ex-btn" onclick="setEx(this,'Deadlift')">Deadlift</button>
+  </div>
+
+  <div class="vel-card">
+    <div class="vel-now">Vận tốc hiện tại</div>
+    <div class="vel-big" id="velBig">0.00 <span class="unit">m/s</span></div>
+    <div class="vb-track"><div class="vb-fill" id="velFill"></div></div>
+    <div class="vb-zones">
+      <span>0</span>
+      <span class="zone-good">Tốt ≥0.5</span>
+      <span class="zone-warn">Mệt ≤0.3</span>
+      <span>1.0+</span>
+    </div>
+  </div>
+
+  <div class="metric-grid">
+    <div class="metric-card">
+      <div class="metric-label">Vận tốc TB (set)</div>
+      <div class="metric-value" id="meanVel">—</div>
+      <div class="metric-unit">m/s</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Vận tốc đỉnh</div>
+      <div class="metric-value" id="peakVel">—</div>
+      <div class="metric-unit">m/s</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Số reps</div>
+      <div class="metric-value" id="repCount">0</div>
+      <div class="metric-unit">rep</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Mất tốc</div>
+      <div class="metric-value" id="velLoss">—</div>
+      <div class="metric-unit">%</div>
+    </div>
+  </div>
+
+  <div class="rep-card">
+    <div class="section-label">Reps trong set này</div>
+    <div id="repRows"><div class="empty-state">Nhấn Bắt đầu rồi tập</div></div>
+  </div>
+
+  <div class="status-card">
+    <div class="status-item">
+      <div class="s-label">RPE ước tính</div>
+      <div class="s-value" id="rpeVal">—</div>
+    </div>
+    <div class="status-item">
+      <div class="s-label">Trạng thái</div>
+      <div class="s-value" id="stateVal" style="font-size:14px;">—</div>
+    </div>
+  </div>
+
+  <button class="main-btn idle" id="mainBtn" onclick="toggleRecord()">▶ Bắt đầu đo</button>
+  <div class="tip">Gắn điện thoại lên thanh tạ bằng dây hoặc băng dính<br><strong>Hướng màn hình ra ngoài</strong> • Trục Y = hướng nâng tạ</div>
+</div>
+
+<script>
+let recording = false, reps = [], inRep = false, repPeak = 0, repSamples = [];
+let velY = 0, lastT = null, setStartVel = null, repCooldown = 0;
+let simInterval = null, simMode = false;
+let currentVel = 0;
+
+function isIOS() { return /iphone|ipad|ipod/i.test(navigator.userAgent); }
+function isAndroid() { return /android/i.test(navigator.userAgent); }
+
+if (isIOS()) document.getElementById('iosNote').style.display = 'block';
+
+function setEx(btn, ex) {
+  document.querySelectorAll('.ex-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if (!recording) resetDisplay();
+}
+
+function resetDisplay() {
+  reps = []; velY = 0; lastT = null; inRep = false; repPeak = 0;
+  repSamples = []; setStartVel = null; repCooldown = 0; currentVel = 0;
+  ['meanVel','peakVel','velLoss','rpeVal'].forEach(id => document.getElementById(id).textContent = '—');
+  document.getElementById('repCount').textContent = '0';
+  document.getElementById('stateVal').textContent = '—';
+  document.getElementById('velFill').style.width = '0%';
+  document.getElementById('velBig').innerHTML = '0.00 <span class="unit">m/s</span>';
+  document.getElementById('repRows').innerHTML = '<div class="empty-state">Nhấn Bắt đầu rồi tập</div>';
+}
+
+async function toggleRecord() {
+  if (!recording) {
+    resetDisplay();
+    const ok = await requestSensor();
+    startUI();
+    if (!ok) { startSim(); }
+  } else {
+    stopAll();
+    stopUI();
+  }
+}
+
+async function requestSensor() {
+  if (typeof DeviceMotionEvent === 'undefined') return false;
+  if (typeof DeviceMotionEvent.requestPermission === 'function') {
+    try {
+      const r = await DeviceMotionEvent.requestPermission();
+      if (r === 'granted') { window.addEventListener('devicemotion', onMotion); return true; }
+      showPermBanner(); return false;
+    } catch(e) { showPermBanner(); return false; }
+  }
+  window.addEventListener('devicemotion', onMotion);
+  return true;
+}
+
+function showPermBanner() {
+  document.getElementById('permBanner').style.display = 'block';
+  simMode = true;
+}
+
+function startUI() {
+  recording = true;
+  document.getElementById('mainBtn').className = 'main-btn recording';
+  document.getElementById('mainBtn').textContent = '⏹ Dừng';
+  document.getElementById('dot').className = 'dot live';
+  document.getElementById('statusText').textContent = 'Đang đo...';
+}
+
+function stopUI() {
+  recording = false;
+  document.getElementById('mainBtn').className = 'main-btn idle';
+  document.getElementById('mainBtn').textContent = '▶ Bắt đầu đo';
+  document.getElementById('dot').className = 'dot';
+  document.getElementById('statusText').textContent = 'Sẵn sàng';
+  updateVelBar(0);
+}
+
+function stopAll() {
+  window.removeEventListener('devicemotion', onMotion);
+  if (simInterval) { clearInterval(simInterval); simInterval = null; }
+}
+
+function onMotion(e) {
+  const acc = e.accelerationIncludingGravity;
+  if (!acc) return;
+  const now = Date.now();
+  if (!lastT) { lastT = now; return; }
+  const dt = Math.min((now - lastT) / 1000, 0.05);
+  lastT = now;
+  const gravity = 9.81;
+  const aY = (acc.y || 0);
+  velY = velY * 0.88 + (aY - gravity * Math.sign(aY || 1)) * dt * 1.4;
+  const v = Math.min(Math.abs(velY) * 1.8, 1.2);
+  processVelocity(v);
+}
+
+function startSim() {
+  let t = 0, phase = 0, repN = 0;
+  const baseVels = [0.72, 0.67, 0.63, 0.58, 0.53, 0.47];
+  simInterval = setInterval(() => {
+    if (!recording) return;
+    t += 0.1;
+    let v = 0;
+    if (phase === 0) {
+      v = 0.03 + Math.random() * 0.03;
+      if (t > 1.0 + Math.random() * 0.5) { phase = 1; t = 0; }
+    } else {
+      const rv = baseVels[Math.min(repN, baseVels.length - 1)];
+      v = rv * Math.sin(Math.PI * (t / 0.85)) + Math.random() * 0.04;
+      if (t > 0.85) { phase = 0; t = 0; repN = Math.min(repN + 1, 5); }
+    }
+    processVelocity(Math.max(0, v));
+  }, 100);
+}
+
+function processVelocity(v) {
+  currentVel = v;
+  updateVelBar(v);
+  repCooldown = Math.max(0, repCooldown - 1);
+  if (v > 0.28 && !inRep) {
+    inRep = true; repPeak = v; repSamples = [v];
+  } else if (inRep) {
+    repPeak = Math.max(repPeak, v);
+    repSamples.push(v);
+    if (v < 0.15 && repCooldown === 0) {
+      const meanV = repSamples.reduce((a,b)=>a+b,0) / repSamples.length;
+      if (repPeak > 0.32 && repSamples.length > 3) {
+        reps.push({ mean: meanV, peak: repPeak });
+        if (setStartVel === null) setStartVel = meanV;
+        repCooldown = 10;
+        updateMetrics();
+      }
+      inRep = false; repPeak = 0; repSamples = [];
+    }
+  }
+}
+
+function updateVelBar(v) {
+  const pct = Math.min(100, (v / 1.0) * 100);
+  const fill = document.getElementById('velFill');
+  fill.style.width = pct.toFixed(1) + '%';
+  let col = v >= 0.5 ? '#1D9E75' : v >= 0.3 ? '#BA7517' : '#E24B4A';
+  fill.style.background = col;
+  const big = document.getElementById('velBig');
+  big.innerHTML = v.toFixed(2) + ' <span class="unit">m/s</span>';
+  big.style.color = v > 0.05 ? col : '#1a1a1a';
+}
+
+function updateMetrics() {
+  const n = reps.length;
+  if (!n) return;
+  const means = reps.map(r => r.mean);
+  const avgMean = means.reduce((a,b)=>a+b,0) / n;
+  const maxPeak = Math.max(...reps.map(r => r.peak));
+  const velLoss = setStartVel ? ((setStartVel - means[n-1]) / setStartVel * 100) : 0;
+  const rpe = Math.min(10, Math.max(5, 10 - avgMean * 7)).toFixed(1);
+  let state = '', stateCol = '#1a1a1a';
+  if (avgMean >= 0.55) { state = '💪 Sung sức'; stateCol = '#1D9E75'; }
+  else if (avgMean >= 0.42) { state = '✅ Ổn định'; stateCol = '#0F6E56'; }
+  else if (avgMean >= 0.3) { state = '⚠️ Đang mệt'; stateCol = '#BA7517'; }
+  else { state = '🛑 Nên nghỉ'; stateCol = '#E24B4A'; }
+
+  document.getElementById('meanVel').textContent = avgMean.toFixed(2);
+  document.getElementById('peakVel').textContent = maxPeak.toFixed(2);
+  document.getElementById('repCount').textContent = n;
+  document.getElementById('velLoss').textContent = Math.max(0, velLoss).toFixed(0);
+  document.getElementById('rpeVal').textContent = rpe;
+  document.getElementById('stateVal').textContent = state;
+  document.getElementById('stateVal').style.color = stateCol;
+
+  let html = '';
+  reps.forEach((r, i) => {
+    const pct = Math.min(100, (r.mean / 0.85) * 100);
+    const col = r.mean >= 0.5 ? '#1D9E75' : r.mean >= 0.35 ? '#BA7517' : '#E24B4A';
+    html += `<div class="rep-row">
+      <span class="rep-num">Rep ${i+1}</span>
+      <div class="rep-bar-wrap"><div class="rep-bar" style="width:${pct.toFixed(0)}%;background:${col}"></div></div>
+      <span class="rep-vel" style="color:${col}">${r.mean.toFixed(2)}</span>
+    </div>`;
+  });
+  document.getElementById('repRows').innerHTML = html;
+}
+</script>
+</body>
+</html>
